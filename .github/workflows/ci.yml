@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  terraform-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+      - run: npm ci
+      - run: npm run terraform:fixtures
+      - run: terraform -chdir=.tmp/terraform-fixture init -backend=false
+      - run: terraform -chdir=.tmp/terraform-fixture fmt -check -recursive
+      - run: terraform -chdir=.tmp/terraform-fixture validate

@@ -28,7 +28,7 @@ This document translates the current design into an execution-oriented plan.
 - Implement node inspector forms from schema metadata (required, computed, conflicts).
 - Wire live validation + Terraform preview with debounced recompute.
 
-## 5) Ship export and demo workflow
+## 5) Ship export and demo workflow ✅
 - Implement export-to-ZIP for generated Terraform project files.
 - Include a one-click “sample architecture” template for demos.
 - Validate generated output with `terraform fmt -check` and `terraform validate` in CI (for fixtures).
