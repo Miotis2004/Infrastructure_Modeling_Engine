@@ -1,121 +1,189 @@
-# IME Next Steps (Post-Design v0.1)
+# IME Next Steps (Completion Plan)
 
-This document translates the current design into an execution-oriented plan.
+This document defines the **remaining work** to take IME from its current engine-first state to a production-ready v1 release, including a usable UI.
 
-## 1) Establish a v1 baseline (Milestone 1 hardening)
-- Finalize `InfrastructureModel` and node/edge types in code.
-- Freeze a minimal schema registry for the initial AWS resource set:
-  - `aws_vpc`, `aws_subnet`, `aws_security_group`, `aws_instance`, `aws_s3_bucket`
-- Define a canonical sample model fixture used across validation/compiler tests.
+## Guiding Principle
+Ship a complete, deterministic, testable workflow:
 
-## 2) Build validation as a standalone package ✅
-- Implement validation pipeline stages in order:
-  1. Schema validation
-  2. Graph validation (cycle + orphan reference detection)
-  3. Semantic validation for AWS-specific constraints
-- Add machine-readable diagnostics (`code`, `message`, `path`, `severity`) so the UI can render precise errors.
-- Add tests for every rule using table-driven cases.
+**Model graph in UI -> validate in real time -> preview Terraform -> export project -> verify Terraform in CI.**
 
-## 3) Implement deterministic compiler with snapshot guarantees
-- Build a normalized IR-to-AST transformation before string rendering.
-- Enforce deterministic ordering rules centrally (resources, keys, blocks).
-- Generate `providers.tf`, `main.tf`, `variables.tf`, `outputs.tf`.
-- Add snapshot tests and determinism tests (same input => byte-identical output).
+---
 
-## 4) Connect the frontend to the engine through a strict boundary
-- Keep engine pure (no UI dependencies).
-- Add an adapter layer for React Flow <-> IR translation.
-- Implement node inspector forms from schema metadata (required, computed, conflicts).
-- Wire live validation + Terraform preview with debounced recompute.
+## 1) Deliver the actual UI application shell
+Build and ship a runnable frontend app, not just frontend boundary code.
 
-## 5) Ship export and demo workflow ✅
-- Implement export-to-ZIP for generated Terraform project files.
-- Include a one-click “sample architecture” template for demos.
-- Validate generated output with `terraform fmt -check` and `terraform validate` in CI (for fixtures).
+### Scope
+- Scaffold and wire the app runtime (`Vite` + `React` + TypeScript).
+- Implement core layout:
+  - graph canvas area
+  - inspector panel
+  - validation panel
+  - Terraform preview panel
+  - top action bar (validate, compile, export, reset/load sample)
+- Add base design tokens/theme and responsive panel behavior.
 
-## 6) Raise confidence with test and quality gates ✅
-- Unit tests: type checks, cycle detection, reference resolution.
-- Integration tests: model -> validation -> compile output.
-- Golden/snapshot tests for HCL rendering.
-- CI gate: lint, type-check, unit/integration tests, snapshot drift checks.
+### Exit criteria
+- `npm run dev` launches an interactive browser UI.
+- The app can load and display the sample architecture model.
+- Layout supports editing + preview without page reload.
 
-## 7) Prepare for v1.1 extensibility (without overbuilding) ✅
-- Define extension points now:
-  - schema registry loader interface ✅
-  - compiler interface ✅
-- Keep dynamic schema loading and multi-target compilation behind feature flags ✅
-- Track unsupported schema constructs explicitly to avoid silent failures ✅
+---
 
-## 8) Suggested 6-week execution sequence ✅
+## 2) Implement graph editing with React Flow
+Complete the visual graph interaction layer expected by the design.
 
-### Week 1 — IR foundation and schema baseline ✅
-**Primary outcomes**
-- Land `InfrastructureModel` core types and canonical node/edge contracts.
-- Add static AWS schema registry for the initial five resources.
-- Add shared fixture models used by validation + compiler tests.
+### Scope
+- Bind React Flow node/edge state to IME model adapter.
+- Support adding/removing/moving:
+  - resource nodes
+  - variable nodes
+  - output nodes
+- Support edge creation/removal via handles for attribute references.
+- Persist node positions into IR model.
 
-**Exit criteria**
-- Baseline model types are committed and consumed by both validator and compiler entry points.
-- Fixture set includes at least one valid model and one intentionally-invalid model.
+### Exit criteria
+- User can create and connect nodes entirely in UI.
+- Graph edits round-trip through adapter (`React Flow <-> IR`) with no data loss.
+- Undo/redo or deterministic edit replay is documented (at minimum, replayable action log).
 
-### Week 2 — Validation pipeline and diagnostics ✅
-**Primary outcomes**
-- Implement validation stages in strict order: schema -> graph -> semantic.
-- Introduce machine-readable diagnostics (`code`, `message`, `path`, `severity`).
-- Add table-driven tests for each rule and failure mode.
+---
 
-**Exit criteria**
-- Validation returns stable, structured diagnostics for all known invalid fixtures.
-- Unit tests cover both positive and negative cases across all three stages.
+## 3) Build schema-driven inspector forms
+Convert schema metadata into production node editing UX.
 
-### Week 3 — Deterministic compiler core
-**Primary outcomes**
-- Build normalized IR -> AST compiler pipeline.
-- Implement deterministic ordering policy for resources/keys/blocks.
-- Generate `providers.tf`, `main.tf`, `variables.tf`, and `outputs.tf`.
+### Scope
+- Render dynamic forms from schema registry fields.
+- Enforce attribute typing for literal values.
+- Surface schema metadata in UI:
+  - required
+  - computed
+  - conflictsWith
+  - dependsOn
+- Add field-level validation hints before full-model validation.
 
-**Exit criteria**
-- Snapshot tests pass for generated Terraform files.
-- Determinism check confirms identical bytes for repeated same-input compilations.
+### Exit criteria
+- Selecting a resource node shows editable schema-derived fields.
+- Invalid field input is blocked or clearly marked before save.
+- Inspector updates are reflected in graph + Terraform preview.
 
-### Week 4 — Frontend/engine integration
-**Primary outcomes**
-- Add strict adapter boundary between React Flow graph state and IR.
-- Implement schema-driven node inspector forms.
-- Wire debounced live validation and Terraform preview updates.
+---
 
-**Exit criteria**
-- Editing a node updates IR, validation panel, and preview without manual refresh.
-- Integration tests cover adapter translation and live validation flow.
+## 4) Wire live validation and diagnostics UX
+Turn engine diagnostics into actionable UI feedback.
 
-### Week 5 — Export and demo readiness
-**Primary outcomes**
-- Deliver export-to-ZIP of generated Terraform project structure.
-- Add one-click sample architecture template for demos.
-- Validate generated fixture output with `terraform fmt -check` and `terraform validate` in CI.
+### Scope
+- Use debounced boundary evaluation for model changes.
+- Render diagnostics grouped by severity and node/field path.
+- Highlight graph nodes/edges with errors and warnings.
+- Support click-through from diagnostics panel to focused node/field.
 
-**Exit criteria**
-- Demo path runs end-to-end from sample load -> preview -> ZIP export.
-- CI runs Terraform format/validate checks for fixture-generated outputs.
+### Exit criteria
+- Editing model triggers automatic validation feedback within debounce window.
+- Users can identify and resolve invalid references/cycles from UI alone.
+- Compilation/export actions are blocked on validation errors.
 
-### Week 6 — Stabilization and release candidate
-**Primary outcomes**
-- Harden CI gates (lint, type-check, tests, snapshots, Terraform checks).
-- Close high-priority bugs and reduce flaky tests.
-- Finalize docs and publish v1 release-candidate checklist.
+---
 
-**Exit criteria**
-- CI is green on main with required gates enforced.
-- Release notes + known limitations + rollback strategy are documented.
+## 5) Complete Terraform preview and export workflow
+Finalize the end-to-end authoring path from model to files.
 
-## 9) Immediate backlog items (ready to create as issues)
-1. Implement `InfrastructureModel` and node typing package.
-2. Add static AWS schema registry with five initial resources.
-3. Implement graph cycle detection with clear diagnostics.
-4. Implement reference resolver and invalid-reference validator.
-5. Build Terraform renderer with stable ordering.
-6. Add snapshot suite for generated `.tf` output.
-7. Build React Flow graph adapter and Zustand store contract.
-8. Implement node inspector driven by schema metadata.
-9. Implement export-to-ZIP pipeline.
-10. Add CI workflow for lint/type/test/snapshots.
+### Scope
+- Show generated files (`providers.tf`, `main.tf`, `variables.tf`, `outputs.tf`) in preview tabs.
+- Add copy/download support per file.
+- Keep/export ZIP flow stable and deterministic for the same model input.
+- Add a visible one-click “Sample Architecture” starter path.
+
+### Exit criteria
+- Preview updates immediately after successful validation/compile.
+- Exported ZIP contents match previewed Terraform exactly.
+- Repeated export of unchanged model is byte-stable for generated `.tf` files.
+
+---
+
+## 6) Close platform/runtime gaps from design assumptions
+Align runtime dependencies and architecture with the documented stack.
+
+### Scope
+- Add missing runtime packages required for implemented UI/validation flows.
+- Ensure dependency set matches actual architecture decisions.
+- Split packages/modules cleanly if needed (`core` vs `frontend`) to keep engine pure.
+- Document supported Node/npm versions and browser targets.
+
+### Exit criteria
+- `package.json` reflects all required runtime dependencies.
+- Build/test/start workflows are reproducible from a clean clone.
+- Engine remains importable/usable without UI runtime dependencies.
+
+---
+
+## 7) Harden CI with Terraform verification and UI checks
+Ensure the full system is continuously validated, not just core engine tests.
+
+### Scope
+- Add Terraform fixture checks in CI:
+  - `terraform fmt -check`
+  - `terraform validate`
+- Add frontend-focused checks:
+  - UI unit tests for inspector and diagnostics rendering
+  - adapter + boundary integration tests through UI state
+- Keep snapshot drift and deterministic compiler checks.
+
+### Exit criteria
+- CI gates include lint, type-check, engine tests, UI tests, snapshot checks, Terraform checks.
+- Any change that breaks Terraform validity or UI-contract behavior fails CI.
+
+---
+
+## 8) Documentation and release-readiness completion
+Prepare for maintainable adoption and handoff.
+
+### Scope
+- Update README with:
+  - architecture summary (core vs UI)
+  - quickstart for full app
+  - developer workflow
+- Refresh DESIGN and NEXT_STEPS to reflect current implemented state.
+- Add missing repo hygiene docs/files:
+  - `LICENSE` file
+  - `CONTRIBUTING.md`
+  - release checklist
+  - known limitations
+
+### Exit criteria
+- New contributor can clone, run, test, and export Terraform using docs only.
+- Documentation no longer lists already-completed work as pending.
+- Release candidate checklist is complete and traceable.
+
+---
+
+## 9) Suggested execution sequence (to completed v1)
+
+### Phase A — UI foundation (Week 1)
+- Complete app shell + React Flow canvas wiring.
+- Load sample model and support basic node movement/edit flow.
+
+### Phase B — Authoring UX (Week 2)
+- Deliver schema-driven inspector and diagnostics panel.
+- Add node/edge highlight + click-through remediation.
+
+### Phase C — End-to-end workflow (Week 3)
+- Finalize preview tabs and deterministic export path.
+- Add one-click sample architecture demo flow.
+
+### Phase D — Quality gates + release prep (Week 4)
+- Add Terraform checks and frontend CI coverage.
+- Finalize docs, license/contributing files, release checklist.
+
+---
+
+## 10) Immediate issue backlog (ready to create)
+1. Scaffold React/Vite frontend app entrypoint and layout.
+2. Implement React Flow canvas with node/edge CRUD and adapter round-trip.
+3. Build schema-driven resource inspector form renderer.
+4. Add diagnostics panel with node/field click-through focus.
+5. Integrate debounced boundary compute into UI state store.
+6. Implement Terraform multi-file preview tabs and copy/download actions.
+7. Validate export ZIP parity against preview output.
+8. Add Terraform fmt/validate checks to GitHub Actions.
+9. Add frontend test suite for inspector, diagnostics, and state boundary integration.
+10. Update README + release docs; add LICENSE and CONTRIBUTING.
