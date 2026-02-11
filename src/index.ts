@@ -8,3 +8,5 @@ export * from "./validation";
 export * from "./compiler";
 
 export * from "./frontend";
+
+export * from "./export";
