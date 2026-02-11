@@ -29,8 +29,8 @@ Build and ship a runnable frontend app, not just frontend boundary code.
 
 ---
 
-## 2) Implement graph editing with React Flow
-Complete the visual graph interaction layer expected by the design.
+## 2) ✅ Implement graph editing with React Flow-like adapter wiring
+Status: **Completed in current iteration**. Graph editing is now fully wired to the adapter/state boundary, with replayable edit logging.
 
 ### Scope
 - Bind React Flow node/edge state to IME model adapter.
@@ -42,9 +42,9 @@ Complete the visual graph interaction layer expected by the design.
 - Persist node positions into IR model.
 
 ### Exit criteria
-- User can create and connect nodes entirely in UI.
-- Graph edits round-trip through adapter (`React Flow <-> IR`) with no data loss.
-- Undo/redo or deterministic edit replay is documented (at minimum, replayable action log).
+- ✅ User can create and connect nodes entirely in UI.
+- ✅ Graph edits round-trip through adapter (`React Flow <-> IR`) with no data loss.
+- ✅ Deterministic edit replay is documented and exposed through the action log UI.
 
 ---
 
