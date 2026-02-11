@@ -3,10 +3,10 @@
 This document translates the current design into an execution-oriented plan.
 
 ## 1) Establish a v1 baseline (Milestone 1 hardening)
-- ✅ Finalize `InfrastructureModel` and node/edge types in code (`src/ir/model.ts`).
-- ✅ Freeze a minimal schema registry for the initial AWS resource set in `src/schemas/aws.ts`:
+- Finalize `InfrastructureModel` and node/edge types in code.
+- Freeze a minimal schema registry for the initial AWS resource set:
   - `aws_vpc`, `aws_subnet`, `aws_security_group`, `aws_instance`, `aws_s3_bucket`
-- ✅ Define a canonical sample model fixture in `src/fixtures/sampleModel.ts` for validation/compiler tests.
+- Define a canonical sample model fixture used across validation/compiler tests.
 
 ## 2) Build validation as a standalone package
 - Implement validation pipeline stages in order:
