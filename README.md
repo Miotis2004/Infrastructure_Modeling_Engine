@@ -15,6 +15,7 @@ It models infrastructure as a validated directed graph (Intermediate Representat
 ## Documentation
 
 For detailed technical specifications, architecture overview, and design decisions, please refer to the [Design Document](docs/DESIGN.md).
+For execution planning based on the current design, see [Next Steps](docs/NEXT_STEPS.md).
 
 ## Getting Started
 
