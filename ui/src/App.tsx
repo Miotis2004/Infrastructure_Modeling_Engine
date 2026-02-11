@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { compileModelToTerraform } from "../../src/compiler";
 import { createSampleArchitectureTemplate, evaluateEngineBoundary, modelToReactFlowGraph } from "../../src/frontend";
+import { awsResourceSchemaRegistry } from "../../src/schemas/aws";
+import type { AttributeSchema } from "../../src/schemas/types";
 import type { Edge, InfrastructureModel, OutputNode, ResourceNode, VariableNode } from "../../src/ir/model";
+import type { TerraformType } from "../../src/ir/model";
 
 type PreviewTab = "providers.tf" | "main.tf" | "variables.tf" | "outputs.tf";
 type NodeKind = "resource" | "variable" | "output";
@@ -15,6 +18,139 @@ type ActionLogEntry = {
 
 const PREVIEW_TABS: PreviewTab[] = ["providers.tf", "main.tf", "variables.tf", "outputs.tf"];
 const MAX_ACTION_LOG = 60;
+
+type FieldErrorMap = Record<string, string>;
+
+function terraformTypeToLabel(type: TerraformType): string {
+  if (typeof type === "string") {
+    return type;
+  }
+
+  if ("list" in type) {
+    return `list(${terraformTypeToLabel(type.list)})`;
+  }
+
+  if ("map" in type) {
+    return `map(${terraformTypeToLabel(type.map)})`;
+  }
+
+  const members = Object.entries(type.object)
+    .map(([name, nestedType]) => `${name}:${terraformTypeToLabel(nestedType)}`)
+    .join(", ");
+
+  return `object({${members}})`;
+}
+
+function parseLiteralByType(rawValue: string, type: TerraformType): { value?: unknown; error?: string } {
+  if (typeof type === "string") {
+    if (type === "string") {
+      return { value: rawValue };
+    }
+
+    if (type === "number") {
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) {
+        return { error: "Must be a valid number." };
+      }
+
+      return { value: parsed };
+    }
+
+    if (type === "bool") {
+      if (rawValue === "true") {
+        return { value: true };
+      }
+
+      if (rawValue === "false") {
+        return { value: false };
+      }
+
+      return { error: "Must be true or false." };
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    return { value: parsed };
+  } catch {
+    return { error: `Must be valid JSON for ${terraformTypeToLabel(type)}.` };
+  }
+}
+
+function literalToInputValue(value: unknown, type: TerraformType): string {
+  if (typeof type === "string") {
+    if (type === "string") {
+      return typeof value === "string" ? value : "";
+    }
+
+    if (type === "number") {
+      return typeof value === "number" ? String(value) : "";
+    }
+
+    if (type === "bool") {
+      return value === true ? "true" : value === false ? "false" : "";
+    }
+  }
+
+  return value === undefined ? "" : JSON.stringify(value, null, 2);
+}
+
+function buildFieldErrors(
+  schemaAttributes: Record<string, AttributeSchema>,
+  drafts: Record<string, string>,
+  resource: ResourceNode
+): FieldErrorMap {
+  const errors: FieldErrorMap = {};
+
+  for (const [fieldName, fieldSchema] of Object.entries(schemaAttributes)) {
+    if (fieldSchema.computed) {
+      continue;
+    }
+
+    const rawValue = drafts[fieldName] ?? "";
+    const trimmedValue = rawValue.trim();
+    const existingAttribute = resource.attributes[fieldName];
+
+    if (existingAttribute?.kind === "reference") {
+      errors[fieldName] = "This value is driven by an edge reference and is edited from the graph connector.";
+      continue;
+    }
+
+    if (existingAttribute?.kind === "expression") {
+      errors[fieldName] = "Expression attributes are not editable in this inspector yet.";
+      continue;
+    }
+
+    if (fieldSchema.required && trimmedValue.length === 0) {
+      errors[fieldName] = "This field is required.";
+      continue;
+    }
+
+    if (trimmedValue.length > 0) {
+      const result = parseLiteralByType(trimmedValue, fieldSchema.type);
+      if (result.error) {
+        errors[fieldName] = result.error;
+        continue;
+      }
+    }
+
+    for (const conflictField of fieldSchema.conflictsWith ?? []) {
+      const conflictValue = drafts[conflictField]?.trim();
+      if (trimmedValue.length > 0 && conflictValue && conflictValue.length > 0) {
+        errors[fieldName] = `Conflicts with '${conflictField}'. Clear one of the fields.`;
+      }
+    }
+
+    for (const dependencyField of fieldSchema.dependsOn ?? []) {
+      const dependencyValue = drafts[dependencyField]?.trim();
+      if (trimmedValue.length > 0 && (!dependencyValue || dependencyValue.length === 0)) {
+        errors[fieldName] = `Requires '${dependencyField}' to be set.`;
+      }
+    }
+  }
+
+  return errors;
+}
 
 function createInitialModel(): InfrastructureModel {
   return createSampleArchitectureTemplate();
@@ -177,10 +313,55 @@ export function App() {
   const [lastAction, setLastAction] = useState("Loaded sample architecture template.");
   const [actionLog, setActionLog] = useState<ActionLogEntry[]>(() => [createActionLogEntry("init: loaded sample model")]);
   const [newEdge, setNewEdge] = useState({ source: "", sourceAttribute: "id", target: "", targetAttribute: "id" });
+  const [selectedResourceId, setSelectedResourceId] = useState<string>(model.resources[0]?.id ?? "");
+  const [inspectorDrafts, setInspectorDrafts] = useState<Record<string, string>>({});
+  const [inspectorFieldErrors, setInspectorFieldErrors] = useState<FieldErrorMap>({});
 
   const graph = useMemo(() => modelToReactFlowGraph(model), [model]);
   const boundaryState = useMemo(() => evaluateEngineBoundary(model), [model]);
   const allNodeIds = useMemo(() => getAllNodeIds(model), [model]);
+  const selectedResource = useMemo(
+    () => model.resources.find((resource) => resource.id === selectedResourceId) ?? model.resources[0] ?? null,
+    [model.resources, selectedResourceId]
+  );
+  const selectedResourceSchema = useMemo(
+    () => (selectedResource ? awsResourceSchemaRegistry[selectedResource.resourceType] : undefined),
+    [selectedResource]
+  );
+
+  const syncInspectorDrafts = (resource: ResourceNode | null) => {
+    if (!resource) {
+      setInspectorDrafts({});
+      setInspectorFieldErrors({});
+      return;
+    }
+
+    const schema = awsResourceSchemaRegistry[resource.resourceType];
+    if (!schema) {
+      setInspectorDrafts({});
+      setInspectorFieldErrors({});
+      return;
+    }
+
+    const nextDrafts: Record<string, string> = {};
+
+    for (const [fieldName, fieldSchema] of Object.entries(schema.attributes)) {
+      const attribute = resource.attributes[fieldName];
+
+      if (attribute?.kind === "literal") {
+        nextDrafts[fieldName] = literalToInputValue(attribute.value, fieldSchema.type);
+      } else {
+        nextDrafts[fieldName] = "";
+      }
+    }
+
+    setInspectorDrafts(nextDrafts);
+    setInspectorFieldErrors(buildFieldErrors(schema.attributes, nextDrafts, resource));
+  };
+
+  useEffect(() => {
+    syncInspectorDrafts(selectedResource);
+  }, [selectedResource]);
 
   const logAction = (action: string) => {
     setActionLog((current) => appendAction(current, action));
@@ -232,6 +413,8 @@ export function App() {
     const next = createInitialModel();
     setModel(next);
     setCompiledFiles(compileModelToTerraform(next));
+    setSelectedResourceId(next.resources[0]?.id ?? "");
+    syncInspectorDrafts(next.resources[0] ?? null);
     const action = "Model reset and sample architecture loaded.";
     setLastAction(action);
     logAction("reset: restored sample architecture");
@@ -242,8 +425,11 @@ export function App() {
     const offset = graph.nodes.length * 24;
 
     if (kind === "resource") {
-      next.resources.push(createResourceNode(createNodeId(next, "res_new"), 120 + offset, 120 + offset));
+      const newResource = createResourceNode(createNodeId(next, "res_new"), 120 + offset, 120 + offset);
+      next.resources.push(newResource);
       updateModel(next, "Added resource node.");
+      setSelectedResourceId(newResource.id);
+      syncInspectorDrafts(newResource);
       return;
     }
 
@@ -263,7 +449,14 @@ export function App() {
       return;
     }
 
-    updateModel(removeNodeById(model, nodeId), `Removed node ${nodeId}.`);
+    const next = removeNodeById(model, nodeId);
+    updateModel(next, `Removed node ${nodeId}.`);
+
+    if (nodeId === selectedResourceId) {
+      const fallbackResource = next.resources[0] ?? null;
+      setSelectedResourceId(fallbackResource?.id ?? "");
+      syncInspectorDrafts(fallbackResource);
+    }
   };
 
   const moveNode = (nodeId: string, deltaX: number, deltaY: number) => {
@@ -320,6 +513,74 @@ export function App() {
 
   const selectedPreview = compiledFiles[activeTab] ?? "// Compile to view generated Terraform.";
 
+  const handleSelectResource = (resourceId: string) => {
+    setSelectedResourceId(resourceId);
+    const resource = model.resources.find((candidate) => candidate.id === resourceId) ?? null;
+    syncInspectorDrafts(resource);
+  };
+
+  const updateInspectorField = (fieldName: string, value: string) => {
+    const resource = selectedResource;
+    const schema = selectedResourceSchema;
+
+    if (!resource || !schema) {
+      return;
+    }
+
+    const nextDrafts = { ...inspectorDrafts, [fieldName]: value };
+    setInspectorDrafts(nextDrafts);
+    setInspectorFieldErrors(buildFieldErrors(schema.attributes, nextDrafts, resource));
+  };
+
+  const applyInspectorChanges = () => {
+    if (!selectedResource || !selectedResourceSchema) {
+      return;
+    }
+
+    const errors = buildFieldErrors(selectedResourceSchema.attributes, inspectorDrafts, selectedResource);
+    setInspectorFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setLastAction("Fix inspector field errors before saving resource attributes.");
+      return;
+    }
+
+    const next = cloneModel(model);
+    const target = next.resources.find((resource) => resource.id === selectedResource.id);
+    if (!target) {
+      return;
+    }
+
+    for (const [fieldName, fieldSchema] of Object.entries(selectedResourceSchema.attributes)) {
+      if (fieldSchema.computed) {
+        continue;
+      }
+
+      const existing = target.attributes[fieldName];
+      if (existing?.kind === "reference" || existing?.kind === "expression") {
+        continue;
+      }
+
+      const rawValue = inspectorDrafts[fieldName] ?? "";
+      const trimmed = rawValue.trim();
+
+      if (trimmed.length === 0) {
+        delete target.attributes[fieldName];
+        continue;
+      }
+
+      const parsed = parseLiteralByType(trimmed, fieldSchema.type);
+      target.attributes[fieldName] = {
+        kind: "literal",
+        value: parsed.value
+      };
+    }
+
+    updateModel(next, `Updated inspector fields for ${selectedResource.id}.`);
+    setCompiledFiles(compileModelToTerraform(next));
+    setLastAction(`Saved schema-typed attributes for ${selectedResource.id}.`);
+  };
+
   return (
     <div className="app-shell">
       <header className="top-bar">
@@ -367,6 +628,7 @@ export function App() {
                       <button onClick={() => moveNode(node.id, 0, -20)}>▲</button>
                       <button onClick={() => moveNode(node.id, 0, 20)}>▼</button>
                       <button onClick={() => removeNode(node.id)}>Remove</button>
+                      {node.type === "resource" ? <button onClick={() => handleSelectResource(node.id)}>Inspect</button> : null}
                     </div>
                   </td>
                 </tr>
@@ -420,7 +682,81 @@ export function App() {
 
         <section className="panel inspector-panel" aria-label="Inspector Panel">
           <h2>Inspector</h2>
-          <p>The schema-driven inspector ships in Step 3. Step 2 focuses on graph edit mechanics and round-trip data safety.</p>
+          {selectedResource ? (
+            <>
+              <label className="inspector-picker">
+                Resource
+                <select value={selectedResource.id} onChange={(event) => handleSelectResource(event.target.value)}>
+                  {model.resources.map((resource) => (
+                    <option key={resource.id} value={resource.id}>
+                      {resource.id} ({resource.resourceType})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedResourceSchema ? (
+                <>
+                  <p className="panel-subtitle">
+                    {selectedResourceSchema.provider}.{selectedResourceSchema.resourceType} ({Object.keys(selectedResourceSchema.attributes).length} fields)
+                  </p>
+
+                  <div className="inspector-fields">
+                    {Object.entries(selectedResourceSchema.attributes).map(([fieldName, fieldSchema]) => {
+                      const value = inspectorDrafts[fieldName] ?? "";
+                      const error = inspectorFieldErrors[fieldName];
+                      const existing = selectedResource.attributes[fieldName];
+                      const isReferenceOrExpression = existing?.kind === "reference" || existing?.kind === "expression";
+                      const disabled = Boolean(fieldSchema.computed) || isReferenceOrExpression;
+
+                      return (
+                        <label key={fieldName} className="inspector-field">
+                          <span>
+                            <strong>{fieldName}</strong> <code>{terraformTypeToLabel(fieldSchema.type)}</code>
+                          </span>
+
+                          {typeof fieldSchema.type === "string" && fieldSchema.type !== "bool" ? (
+                            <input value={value} disabled={disabled} onChange={(event) => updateInspectorField(fieldName, event.target.value)} />
+                          ) : typeof fieldSchema.type === "string" && fieldSchema.type === "bool" ? (
+                            <select value={value} disabled={disabled} onChange={(event) => updateInspectorField(fieldName, event.target.value)}>
+                              <option value="">(unset)</option>
+                              <option value="true">true</option>
+                              <option value="false">false</option>
+                            </select>
+                          ) : (
+                            <textarea
+                              value={value}
+                              disabled={disabled}
+                              rows={3}
+                              onChange={(event) => updateInspectorField(fieldName, event.target.value)}
+                            />
+                          )}
+
+                          <small>
+                            {fieldSchema.required ? "required" : "optional"} • {fieldSchema.computed ? "computed" : "user-settable"}
+                            {fieldSchema.conflictsWith?.length ? ` • conflicts: ${fieldSchema.conflictsWith.join(", ")}` : ""}
+                            {fieldSchema.dependsOn?.length ? ` • dependsOn: ${fieldSchema.dependsOn.join(", ")}` : ""}
+                          </small>
+
+                          {existing?.kind === "reference" ? <small className="field-note">Value currently comes from a graph reference edge.</small> : null}
+                          {existing?.kind === "expression" ? <small className="field-note">Value currently comes from a Terraform expression.</small> : null}
+                          {error ? <small className="field-error">{error}</small> : null}
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <button onClick={applyInspectorChanges} disabled={Object.keys(inspectorFieldErrors).length > 0}>
+                    Save inspector changes
+                  </button>
+                </>
+              ) : (
+                <p className="status-error">No schema found for {selectedResource.resourceType}.</p>
+              )}
+            </>
+          ) : (
+            <p className="panel-subtitle">No resource nodes available. Add a resource to edit schema-driven attributes.</p>
+          )}
 
           <h3>Deterministic Action Log</h3>
           <p className="panel-subtitle">Replay this ordered log to deterministically rebuild the current graph edits.</p>
