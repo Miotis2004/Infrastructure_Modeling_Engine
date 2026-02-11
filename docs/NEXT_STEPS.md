@@ -100,19 +100,19 @@ Status: **Completed in current iteration**. Terraform preview now exposes all ge
 
 ---
 
-## 6) Close platform/runtime gaps from design assumptions
-Align runtime dependencies and architecture with the documented stack.
+## 6) ✅ Close platform/runtime gaps from design assumptions
+Status: **Completed in current iteration**. Runtime metadata now declares supported Node/npm and browser targets, package exports are split into core/frontend entrypoints, and documentation reflects reproducible clean-clone workflows.
 
 ### Scope
-- Add missing runtime packages required for implemented UI/validation flows.
-- Ensure dependency set matches actual architecture decisions.
-- Split packages/modules cleanly if needed (`core` vs `frontend`) to keep engine pure.
-- Document supported Node/npm versions and browser targets.
+- ✅ Add missing runtime packages required for implemented UI/validation flows.
+- ✅ Ensure dependency set matches actual architecture decisions.
+- ✅ Split packages/modules cleanly (`core` vs `frontend`) to keep engine pure.
+- ✅ Document supported Node/npm versions and browser targets.
 
 ### Exit criteria
-- `package.json` reflects all required runtime dependencies.
-- Build/test/start workflows are reproducible from a clean clone.
-- Engine remains importable/usable without UI runtime dependencies.
+- ✅ `package.json` reflects all required runtime dependencies.
+- ✅ Build/test/start workflows are reproducible from a clean clone.
+- ✅ Engine remains importable/usable without UI runtime dependencies.
 
 ---
 
