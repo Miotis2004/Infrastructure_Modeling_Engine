@@ -48,7 +48,7 @@ This document translates the current design into an execution-oriented plan.
 
 ## 8) Suggested 6-week execution sequence ✅
 
-### Week 1 — IR foundation and schema baseline
+### Week 1 — IR foundation and schema baseline ✅
 **Primary outcomes**
 - Land `InfrastructureModel` core types and canonical node/edge contracts.
 - Add static AWS schema registry for the initial five resources.

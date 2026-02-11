@@ -140,3 +140,61 @@ export const sampleModelFixture: Readonly<InfrastructureModel> = Object.freeze({
     }
   ]
 } as InfrastructureModel);
+
+export const invalidModelFixture: Readonly<InfrastructureModel> = Object.freeze({
+  version: "0.1.0",
+  metadata: {
+    name: "invalid-web-stack",
+    description: "Intentionally invalid fixture for validator negative-path testing"
+  },
+  variables: [],
+  resources: [
+    {
+      id: "res_vpc_broken",
+      type: "resource",
+      label: "Broken VPC",
+      provider: "aws",
+      resourceType: "aws_vpc",
+      attributes: {
+        // missing required cidr_block
+        id: { kind: "literal", value: "manual-vpc-id" }
+      }
+    },
+    {
+      id: "res_instance_broken",
+      type: "resource",
+      label: "Broken Instance",
+      provider: "aws",
+      resourceType: "aws_instance",
+      attributes: {
+        ami: { kind: "literal", value: "not-an-ami" },
+        instance_type: { kind: "literal", value: "" },
+        subnet_id: {
+          kind: "reference",
+          ref: { nodeId: "res_missing_subnet", attribute: "id" }
+        }
+      }
+    }
+  ],
+  outputs: [
+    {
+      id: "out_missing",
+      type: "output",
+      label: "Broken Output",
+      valueRef: { nodeId: "res_missing_subnet", attribute: "id" }
+    }
+  ],
+  edges: [
+    {
+      fromNodeId: "res_missing_subnet",
+      fromAttribute: "id",
+      toNodeId: "res_instance_broken",
+      toAttribute: "subnet_id"
+    }
+  ]
+} as InfrastructureModel);
+
+export const modelFixtures = Object.freeze({
+  valid: sampleModelFixture,
+  invalid: invalidModelFixture
+});

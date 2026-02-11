@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import type { InfrastructureModel } from "../ir/model";
-import { sampleModelFixture } from "../fixtures/sampleModel";
+import { invalidModelFixture, sampleModelFixture } from "../fixtures/sampleModel";
 import { validateModel } from "../validation";
 
 function cloneFixture(): InfrastructureModel {
@@ -179,4 +179,13 @@ test("AWS semantic validation emits diagnostics for every semantic rule", async 
       assert.ok(result.diagnostics.some((d) => d.code === testCase.expectedCode));
     });
   }
+});
+
+
+test("intentionally-invalid fixture fails validation with structured diagnostics", () => {
+  const result = validateModel(structuredClone(invalidModelFixture as InfrastructureModel));
+
+  assert.equal(result.isValid, false);
+  assert.ok(result.diagnostics.length > 0);
+  assert.ok(result.diagnostics.every((d) => d.code && d.message && d.path && d.severity));
 });
