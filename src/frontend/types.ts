@@ -69,13 +69,38 @@ export interface EngineBoundaryState {
     isValid: boolean;
     diagnostics: Array<{ code: string; message: string; path: string; severity: "error" | "warning" }>;
   };
+  diagnosticsView: DiagnosticsViewModel;
   terraformPreview: Partial<TerraformFileSet>;
+  actions: {
+    canCompile: boolean;
+    canExport: boolean;
+  };
 }
 
 export interface DebouncedEngineBoundary {
   schedule(model: InfrastructureModel): void;
   flush(): void;
   cancel(): void;
+}
+
+export interface DiagnosticFocusTarget {
+  nodeId?: string;
+  fieldPath?: string;
+  edgeId?: string;
+}
+
+export interface DiagnosticsGroup {
+  key: string;
+  diagnostics: Array<{ code: string; message: string; path: string; severity: "error" | "warning" }>;
+}
+
+export interface DiagnosticsViewModel {
+  bySeverity: Record<"error" | "warning", DiagnosticsGroup[]>;
+  highlights: {
+    nodes: Record<string, "error" | "warning">;
+    edges: Record<string, "error" | "warning">;
+  };
+  focusByDiagnosticPath: Record<string, DiagnosticFocusTarget>;
 }
 
 export function toAttributeReferenceEdgeId(edge: Edge): string {
