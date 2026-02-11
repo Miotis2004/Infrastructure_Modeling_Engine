@@ -116,21 +116,21 @@ Status: **Completed in current iteration**. Runtime metadata now declares suppor
 
 ---
 
-## 7) Harden CI with Terraform verification and UI checks
-Ensure the full system is continuously validated, not just core engine tests.
+## 7) ✅ Harden CI with Terraform verification and UI checks
+Status: **Completed in current iteration**. CI now installs Terraform, executes fixture-level `terraform fmt -check` + `terraform validate`, and runs dedicated frontend UI-contract tests that cover inspector metadata rendering, diagnostics view grouping/highlighting, and adapter/boundary state integration.
 
 ### Scope
-- Add Terraform fixture checks in CI:
-  - `terraform fmt -check`
-  - `terraform validate`
-- Add frontend-focused checks:
-  - UI unit tests for inspector and diagnostics rendering
-  - adapter + boundary integration tests through UI state
-- Keep snapshot drift and deterministic compiler checks.
+- ✅ Add Terraform fixture checks in CI:
+  - ✅ `terraform fmt -check`
+  - ✅ `terraform validate`
+- ✅ Add frontend-focused checks:
+  - ✅ UI unit tests for inspector and diagnostics rendering
+  - ✅ adapter + boundary integration tests through UI state
+- ✅ Keep snapshot drift and deterministic compiler checks.
 
 ### Exit criteria
-- CI gates include lint, type-check, engine tests, UI tests, snapshot checks, Terraform checks.
-- Any change that breaks Terraform validity or UI-contract behavior fails CI.
+- ✅ CI gates include lint, type-check, engine tests, UI tests, snapshot checks, Terraform checks.
+- ✅ Any change that breaks Terraform validity or UI-contract behavior fails CI.
 
 ---
 
