@@ -3,11 +3,34 @@
   "version": "1.0.0",
   "description": "Infrastructure Modeling Engine (IME) v1",
   "type": "commonjs",
-  "main": "dist/index.js",
+  "main": "dist/core.js",
+  "exports": {
+    ".": "./dist/core.js",
+    "./frontend": "./dist/frontend.js",
+    "./compiler": "./dist/compiler/index.js",
+    "./validation": "./dist/validation/index.js",
+    "./export": "./dist/export/index.js"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.2.4"
+  },
+  "browserslist": {
+    "production": [
+      "defaults",
+      "not IE 11",
+      "maintained node versions"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
   "scripts": {
     "build": "tsc",
     "dev": "vite",
-    "start": "node dist/index.js",
+    "start": "node dist/core.js",
     "test": "npm run test:all",
     "terraform:fixtures": "npm run build && node dist/tools/renderFixtureTerraform.js .tmp/terraform-fixture",
     "lint": "tsc --noEmit",
