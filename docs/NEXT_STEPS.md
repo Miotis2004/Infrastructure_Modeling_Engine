@@ -33,7 +33,7 @@ This document translates the current design into an execution-oriented plan.
 - Include a one-click “sample architecture” template for demos.
 - Validate generated output with `terraform fmt -check` and `terraform validate` in CI (for fixtures).
 
-## 6) Raise confidence with test and quality gates
+## 6) Raise confidence with test and quality gates ✅
 - Unit tests: type checks, cycle detection, reference resolution.
 - Integration tests: model -> validation -> compile output.
 - Golden/snapshot tests for HCL rendering.
