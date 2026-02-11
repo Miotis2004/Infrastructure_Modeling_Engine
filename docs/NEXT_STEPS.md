@@ -46,13 +46,67 @@ This document translates the current design into an execution-oriented plan.
 - Keep dynamic schema loading and multi-target compilation behind feature flags ✅
 - Track unsupported schema constructs explicitly to avoid silent failures ✅
 
-## 8) Suggested 6-week execution sequence
-- Week 1: IR types + schema registry + fixtures
-- Week 2: validation stages + unit tests
-- Week 3: compiler core + deterministic renderer
-- Week 4: frontend integration + inspector + preview
-- Week 5: export flow + end-to-end demo path
-- Week 6: stabilization, CI hardening, docs, release candidate
+## 8) Suggested 6-week execution sequence ✅
+
+### Week 1 — IR foundation and schema baseline
+**Primary outcomes**
+- Land `InfrastructureModel` core types and canonical node/edge contracts.
+- Add static AWS schema registry for the initial five resources.
+- Add shared fixture models used by validation + compiler tests.
+
+**Exit criteria**
+- Baseline model types are committed and consumed by both validator and compiler entry points.
+- Fixture set includes at least one valid model and one intentionally-invalid model.
+
+### Week 2 — Validation pipeline and diagnostics
+**Primary outcomes**
+- Implement validation stages in strict order: schema -> graph -> semantic.
+- Introduce machine-readable diagnostics (`code`, `message`, `path`, `severity`).
+- Add table-driven tests for each rule and failure mode.
+
+**Exit criteria**
+- Validation returns stable, structured diagnostics for all known invalid fixtures.
+- Unit tests cover both positive and negative cases across all three stages.
+
+### Week 3 — Deterministic compiler core
+**Primary outcomes**
+- Build normalized IR -> AST compiler pipeline.
+- Implement deterministic ordering policy for resources/keys/blocks.
+- Generate `providers.tf`, `main.tf`, `variables.tf`, and `outputs.tf`.
+
+**Exit criteria**
+- Snapshot tests pass for generated Terraform files.
+- Determinism check confirms identical bytes for repeated same-input compilations.
+
+### Week 4 — Frontend/engine integration
+**Primary outcomes**
+- Add strict adapter boundary between React Flow graph state and IR.
+- Implement schema-driven node inspector forms.
+- Wire debounced live validation and Terraform preview updates.
+
+**Exit criteria**
+- Editing a node updates IR, validation panel, and preview without manual refresh.
+- Integration tests cover adapter translation and live validation flow.
+
+### Week 5 — Export and demo readiness
+**Primary outcomes**
+- Deliver export-to-ZIP of generated Terraform project structure.
+- Add one-click sample architecture template for demos.
+- Validate generated fixture output with `terraform fmt -check` and `terraform validate` in CI.
+
+**Exit criteria**
+- Demo path runs end-to-end from sample load -> preview -> ZIP export.
+- CI runs Terraform format/validate checks for fixture-generated outputs.
+
+### Week 6 — Stabilization and release candidate
+**Primary outcomes**
+- Harden CI gates (lint, type-check, tests, snapshots, Terraform checks).
+- Close high-priority bugs and reduce flaky tests.
+- Finalize docs and publish v1 release-candidate checklist.
+
+**Exit criteria**
+- CI is green on main with required gates enforced.
+- Release notes + known limitations + rollback strategy are documented.
 
 ## 9) Immediate backlog items (ready to create as issues)
 1. Implement `InfrastructureModel` and node typing package.
