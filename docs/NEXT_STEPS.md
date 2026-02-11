@@ -8,7 +8,7 @@ This document translates the current design into an execution-oriented plan.
   - `aws_vpc`, `aws_subnet`, `aws_security_group`, `aws_instance`, `aws_s3_bucket`
 - Define a canonical sample model fixture used across validation/compiler tests.
 
-## 2) Build validation as a standalone package
+## 2) Build validation as a standalone package ✅
 - Implement validation pipeline stages in order:
   1. Schema validation
   2. Graph validation (cycle + orphan reference detection)
@@ -58,7 +58,7 @@ This document translates the current design into an execution-oriented plan.
 - Baseline model types are committed and consumed by both validator and compiler entry points.
 - Fixture set includes at least one valid model and one intentionally-invalid model.
 
-### Week 2 — Validation pipeline and diagnostics
+### Week 2 — Validation pipeline and diagnostics ✅
 **Primary outcomes**
 - Implement validation stages in strict order: schema -> graph -> semantic.
 - Introduce machine-readable diagnostics (`code`, `message`, `path`, `severity`).
