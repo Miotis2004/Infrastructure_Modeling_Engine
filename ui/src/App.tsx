@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { compileModelToTerraform } from "../../src/compiler";
+import { compileModelToTerraformZip } from "../../src/export";
 import { createSampleArchitectureTemplate, evaluateEngineBoundary, modelToReactFlowGraph } from "../../src/frontend";
 import { awsResourceSchemaRegistry } from "../../src/schemas/aws";
 import type { AttributeSchema } from "../../src/schemas/types";
@@ -158,6 +159,18 @@ function createInitialModel(): InfrastructureModel {
 
 function download(name: string, content: string): void {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = name;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+function downloadBinary(name: string, content: Uint8Array): void {
+  const blob = new Blob([content], { type: "application/zip" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -391,22 +404,53 @@ export function App() {
   };
 
   const handleExport = () => {
-    const files = Object.entries(compiledFiles);
+    if (!boundaryState.actions.canExport) {
+      const action = "Fix validation errors before exporting.";
+      setLastAction(action);
+      logAction("export: blocked by validation errors");
+      return;
+    }
 
-    if (files.length === 0) {
+    const files = compileModelToTerraform(model);
+    if (Object.keys(files).length === 0) {
       const action = "Nothing to export yet. Compile first.";
       setLastAction(action);
       logAction("export: skipped because preview is empty");
       return;
     }
 
-    for (const [fileName, fileContent] of files) {
-      download(fileName, fileContent ?? "");
+    const archive = compileModelToTerraformZip(model, { projectFolderName: "ime-terraform" });
+    downloadBinary("ime-terraform.zip", archive);
+
+    const action = `Exported Terraform ZIP (${Object.keys(files).length} files).`;
+    setLastAction(action);
+    logAction(`export: downloaded zip with ${Object.keys(files).length} files`);
+  };
+
+  const handleDownloadActiveFile = () => {
+    const content = compiledFiles[activeTab] ?? "";
+    download(activeTab, content);
+    setLastAction(`Downloaded ${activeTab}.`);
+    logAction(`preview: downloaded ${activeTab}`);
+  };
+
+  const handleCopyActiveFile = async () => {
+    const content = compiledFiles[activeTab] ?? "";
+
+    if (!navigator.clipboard?.writeText) {
+      setLastAction("Clipboard support is unavailable in this browser context.");
+      logAction(`preview: clipboard unavailable for ${activeTab}`);
+      return;
     }
 
-    const action = `Exported ${files.length} Terraform files.`;
-    setLastAction(action);
-    logAction(`export: downloaded ${files.length} files`);
+    try {
+      await navigator.clipboard.writeText(content);
+      setLastAction(`Copied ${activeTab} to clipboard.`);
+      logAction(`preview: copied ${activeTab}`);
+    } catch {
+      setLastAction("Unable to copy file to clipboard in this browser context.");
+      logAction(`preview: copy failed for ${activeTab}`);
+    }
   };
 
   const handleReset = () => {
@@ -587,9 +631,13 @@ export function App() {
         <h1>Infrastructure Modeling Engine</h1>
         <div className="actions">
           <button onClick={handleValidate}>Validate</button>
-          <button onClick={handleCompile}>Compile</button>
-          <button onClick={handleExport}>Export</button>
-          <button onClick={handleReset}>Reset / Load Sample</button>
+          <button onClick={handleCompile} disabled={!boundaryState.actions.canCompile}>
+            Compile
+          </button>
+          <button onClick={handleExport} disabled={!boundaryState.actions.canExport}>
+            Export ZIP
+          </button>
+          <button onClick={handleReset}>Sample Architecture</button>
         </div>
       </header>
 
@@ -801,6 +849,10 @@ export function App() {
                 {tab}
               </button>
             ))}
+          </div>
+          <div className="preview-actions">
+            <button onClick={() => void handleCopyActiveFile()}>Copy active file</button>
+            <button onClick={handleDownloadActiveFile}>Download active file</button>
           </div>
           <pre>{selectedPreview}</pre>
         </section>

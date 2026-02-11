@@ -229,6 +229,12 @@ button:hover {
   margin-bottom: 0.75rem;
 }
 
+.preview-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .tabs .active {
   border-color: var(--accent);
 }

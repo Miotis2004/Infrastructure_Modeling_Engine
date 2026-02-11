@@ -84,19 +84,19 @@ Status: **Completed in current iteration**. Engine diagnostics are now projected
 
 ---
 
-## 5) Complete Terraform preview and export workflow
-Finalize the end-to-end authoring path from model to files.
+## 5) ✅ Complete Terraform preview and export workflow
+Status: **Completed in current iteration**. Terraform preview now exposes all generated file tabs with per-file copy/download actions, exports a deterministic ZIP package, and provides a visible one-click Sample Architecture reset path in the main action bar.
 
 ### Scope
-- Show generated files (`providers.tf`, `main.tf`, `variables.tf`, `outputs.tf`) in preview tabs.
-- Add copy/download support per file.
-- Keep/export ZIP flow stable and deterministic for the same model input.
-- Add a visible one-click “Sample Architecture” starter path.
+- ✅ Show generated files (`providers.tf`, `main.tf`, `variables.tf`, `outputs.tf`) in preview tabs.
+- ✅ Add copy/download support per file.
+- ✅ Keep/export ZIP flow stable and deterministic for the same model input.
+- ✅ Add a visible one-click “Sample Architecture” starter path.
 
 ### Exit criteria
-- Preview updates immediately after successful validation/compile.
-- Exported ZIP contents match previewed Terraform exactly.
-- Repeated export of unchanged model is byte-stable for generated `.tf` files.
+- ✅ Preview updates immediately after successful validation/compile.
+- ✅ Exported ZIP contents match previewed Terraform exactly.
+- ✅ Repeated export of unchanged model is byte-stable for generated `.tf` files.
 
 ---
 
