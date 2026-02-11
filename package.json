@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc -w",
+    "dev": "vite",
     "start": "node dist/index.js",
     "test": "npm run test:all",
     "terraform:fixtures": "npm run build && node dist/tools/renderFixtureTerraform.js .tmp/terraform-fixture",
@@ -16,7 +16,11 @@
     "test:integration": "npm run build && node --test dist/tests/step4.frontend.spec.js dist/tests/step5.export.spec.js dist/tests/step6.integration.spec.js dist/tests/step7.extensibility.spec.js",
     "test:snapshots": "npm run build && node --test dist/tests/step3.compiler.spec.js",
     "test:snapshot-drift": "npm run build && node dist/tools/checkSnapshotDrift.js",
-    "test:all": "npm run test:unit && npm run test:integration && npm run test:snapshots && npm run test:snapshot-drift"
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:snapshots && npm run test:snapshot-drift",
+    "dev:engine": "tsc -w",
+    "build:engine": "tsc",
+    "build:ui": "vite build",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
@@ -29,6 +33,14 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^25.2.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^5.4.11",
+    "@vitejs/plugin-react": "^4.3.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
