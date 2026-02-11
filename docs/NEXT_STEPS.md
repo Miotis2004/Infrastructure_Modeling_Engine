@@ -39,12 +39,12 @@ This document translates the current design into an execution-oriented plan.
 - Golden/snapshot tests for HCL rendering.
 - CI gate: lint, type-check, unit/integration tests, snapshot drift checks.
 
-## 7) Prepare for v1.1 extensibility (without overbuilding)
+## 7) Prepare for v1.1 extensibility (without overbuilding) ✅
 - Define extension points now:
-  - schema registry loader interface
-  - compiler interface (already in design)
-- Keep dynamic schema loading and multi-target compilation behind feature flags.
-- Track unsupported schema constructs explicitly to avoid silent failures.
+  - schema registry loader interface ✅
+  - compiler interface ✅
+- Keep dynamic schema loading and multi-target compilation behind feature flags ✅
+- Track unsupported schema constructs explicitly to avoid silent failures ✅
 
 ## 8) Suggested 6-week execution sequence
 - Week 1: IR types + schema registry + fixtures

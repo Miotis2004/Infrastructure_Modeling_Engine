@@ -27,6 +27,15 @@ export const runSchemaValidation: ValidatorStage = ({ model, registry }) => {
       });
     }
 
+    for (const unsupportedConstruct of schema.unsupportedConstructs ?? []) {
+      diagnostics.push({
+        code: "SCHEMA_UNSUPPORTED_CONSTRUCT",
+        message: `Unsupported schema construct '${unsupportedConstruct.code}' on '${resource.resourceType}': ${unsupportedConstruct.message}`,
+        path: unsupportedConstruct.path ?? `${resourcePath}.resourceType`,
+        severity: unsupportedConstruct.blocking === false ? "warning" : "error"
+      });
+    }
+
     Object.entries(resource.attributes).forEach(([attributeName, attributeValue]) => {
       const attributePath = `${resourcePath}.attributes.${attributeName}`;
       const attributeSchema = schema.attributes[attributeName];

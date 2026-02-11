@@ -1,5 +1,19 @@
 import type { InfrastructureModel, OutputNode, ResourceNode, VariableNode } from "../ir/model";
 
+export type CompilationTarget = "terraform" | (string & {});
+
+export interface Compiler {
+  readonly target: CompilationTarget;
+  compile(model: InfrastructureModel): TerraformFileSet;
+}
+
+export interface CompileModelOptions {
+  target?: CompilationTarget;
+  featureFlags?: {
+    multiTargetCompilation?: boolean;
+  };
+}
+
 export interface TerraformFileSet {
   "providers.tf": string;
   "main.tf": string;
