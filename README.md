@@ -1,91 +1,102 @@
 # Infrastructure Modeling Engine (IME)
 
-The Infrastructure Modeling Engine (IME) is a deterministic, graph-based infrastructure modeling system that compiles structured infrastructure models into Terraform HCL projects.
+IME is a deterministic, graph-first infrastructure authoring engine. The source of truth is a typed Infrastructure Intermediate Representation (IR), and Terraform is generated as a compilation target.
 
-It models infrastructure as a validated directed graph (Intermediate Representation), treating Terraform HCL as a compilation target rather than the source of truth.
+The repository includes both:
+- a reusable **core engine** (IR, validation, compile, export APIs), and
+- a runnable **Vite + React UI** for graph authoring, diagnostics, preview, and export.
 
-## Features
+## Architecture at a Glance
 
-- **Typed Infrastructure Modeling**: Strong typing for infrastructure components.
-- **Static Validation**: Validates dependencies and types before compilation.
-- **Deterministic Output**: Generates consistent and predictable Terraform HCL.
-- **Visual Interface**: React + Vite graph authoring workspace with inspector, diagnostics, preview, and export actions.
-- **Exportable Projects**: Compiles to standard Terraform projects.
+### Core (`src/`)
+- **IR model**: typed graph nodes/edges for variables, resources, and outputs.
+- **Validation pipeline**: schema, graph, and semantic checks.
+- **Compiler**: deterministic Terraform file generation.
+- **Export**: deterministic ZIP packaging of generated Terraform files.
 
-## Documentation
+### UI (`ui/` + `src/frontend`)
+- Interactive graph workspace with create/connect/move/delete flows.
+- Schema-driven inspector with type-aware field parsing and metadata hints.
+- Live diagnostics with severity grouping and graph focus metadata.
+- Terraform preview tabs (`providers.tf`, `main.tf`, `variables.tf`, `outputs.tf`) with copy/download.
+- One-click sample architecture reset and export actions.
 
-For detailed technical specifications, architecture overview, and design decisions, please refer to the [Design Document](docs/DESIGN.md).
-For execution planning based on the current design, see [Next Steps](docs/NEXT_STEPS.md).
-
-## Getting Started
+## Quickstart (Full App)
 
 ### Prerequisites
-
 - Node.js **20.11.0+**
 - npm **10.2.4+**
 
-### Installation
-
-Clone the repository and install dependencies:
-
+### Install
 ```bash
 git clone https://github.com/Miotis2004/Infrastructure_Modeling_Engine.git
 cd Infrastructure_Modeling_Engine
 npm install
 ```
 
-## Runtime Targets
-
-- **Node/npm support** is pinned in `package.json` via `engines` and validated through clean `npm install` + script workflows.
-- **Browser targets** are declared via `browserslist`:
-  - production: modern evergreen defaults (IE excluded)
-  - development: latest Chrome/Firefox/Safari
-
-## Package Boundaries
-
-IME now publishes distinct entrypoints so engine consumers do not depend on UI implementation details:
-
-- `infrastructure_modeling_engine` (default export path): core IR, validation, compiler, and export APIs (`dist/core.js`)
-- `infrastructure_modeling_engine/frontend`: frontend adapter/boundary helpers (`dist/frontend.js`)
-
-This keeps the engine API surface clean while preserving a dedicated frontend integration entrypoint.
-
-## Usage
-
-### Development
-
-To start the development server with hot-reloading:
-
+### Run the UI locally
 ```bash
 npm run dev
 ```
+Then open the local Vite URL shown in the terminal (usually `http://localhost:5173`).
 
 ### Build
-
-To compile the TypeScript code:
-
 ```bash
 npm run build
 ```
 
-### Run
-
-To run the compiled engine:
-
+### Run the compiled Node entrypoint
 ```bash
 npm start
 ```
 
-## Project Structure
+## Developer Workflow
 
-- `src/` - Source code for the engine and application.
-- `docs/` - Documentation files.
-- `dist/` - Compiled JavaScript output (after build).
+### Core checks
+```bash
+npm run lint
+npm run type-check
+npm run test
+```
 
-## Contributing
+### Focused test targets
+```bash
+npm run test:unit
+npm run test:integration
+npm run test:ui
+npm run test:snapshots
+npm run test:snapshot-drift
+npm run test:terraform
+```
 
-Contributions are welcome! Please review the [Design Document](docs/DESIGN.md) to understand the architecture before making changes.
+### Terraform fixture output (manual inspection)
+```bash
+npm run terraform:fixtures
+```
+
+## Runtime Targets
+
+- Node/npm support is pinned via `engines` in `package.json`.
+- Browser targets are declared in `browserslist` for development and production.
+
+## Public Package Boundaries
+
+IME publishes split entrypoints so engine consumers do not inherit UI runtime concerns:
+
+- `infrastructure_modeling_engine` → `dist/core.js`
+- `infrastructure_modeling_engine/frontend` → `dist/frontend.js`
+- `infrastructure_modeling_engine/compiler` → `dist/compiler/index.js`
+- `infrastructure_modeling_engine/validation` → `dist/validation/index.js`
+- `infrastructure_modeling_engine/export` → `dist/export/index.js`
+
+## Documentation
+
+- Architecture + implementation status: [`docs/DESIGN.md`](docs/DESIGN.md)
+- Completion and roadmap tracking: [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md)
+- Contribution process: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Release readiness checklist: [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md)
+- Known limitations: [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md)
 
 ## License
 
-This project is licensed under the ISC License.
+Licensed under the ISC License. See [`LICENSE`](LICENSE).

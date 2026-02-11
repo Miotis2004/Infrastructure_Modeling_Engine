@@ -1,189 +1,85 @@
 # IME Next Steps (Completion Plan)
 
-This document defines the **remaining work** to take IME from its current engine-first state to a production-ready v1 release, including a usable UI.
+This document tracks the v1 completion plan from engine-first implementation to release-ready product workflow.
 
-## Guiding Principle
-Ship a complete, deterministic, testable workflow:
+Guiding workflow:
 
-**Model graph in UI -> validate in real time -> preview Terraform -> export project -> verify Terraform in CI.**
-
----
-
-## 1) Deliver the actual UI application shell
-Build and ship a runnable frontend app, not just frontend boundary code.
-
-### Scope
-- Scaffold and wire the app runtime (`Vite` + `React` + TypeScript).
-- Implement core layout:
-  - graph canvas area
-  - inspector panel
-  - validation panel
-  - Terraform preview panel
-  - top action bar (validate, compile, export, reset/load sample)
-- Add base design tokens/theme and responsive panel behavior.
-
-### Exit criteria
-- `npm run dev` launches an interactive browser UI.
-- The app can load and display the sample architecture model.
-- Layout supports editing + preview without page reload.
+**Model graph in UI → validate in real time → preview Terraform → export project → verify Terraform in CI.**
 
 ---
+
+## 1) ✅ Deliver the actual UI application shell
+Status: **Completed**.
+
+- Vite + React + TypeScript app runtime is wired.
+- Core layout exists (graph, inspector, diagnostics, preview, action bar).
+- Sample architecture can be loaded and edited in the running app.
 
 ## 2) ✅ Implement graph editing with React Flow-like adapter wiring
-Status: **Completed in current iteration**. Graph editing is now fully wired to the adapter/state boundary, with replayable edit logging.
+Status: **Completed**.
 
-### Scope
-- Bind React Flow node/edge state to IME model adapter.
-- Support adding/removing/moving:
-  - resource nodes
-  - variable nodes
-  - output nodes
-- Support edge creation/removal via handles for attribute references.
-- Persist node positions into IR model.
+- Graph node/edge edits round-trip through adapter/state boundary.
+- Resource/variable/output create-remove-move flows are implemented.
+- Deterministic action logging/replay support is documented in UI behavior.
 
-### Exit criteria
-- ✅ User can create and connect nodes entirely in UI.
-- ✅ Graph edits round-trip through adapter (`React Flow <-> IR`) with no data loss.
-- ✅ Deterministic edit replay is documented and exposed through the action log UI.
+## 3) ✅ Build schema-driven inspector forms
+Status: **Completed**.
 
----
-
-## 3) Build schema-driven inspector forms
-Convert schema metadata into production node editing UX.
-
-### Scope
-- Render dynamic forms from schema registry fields.
-- Enforce attribute typing for literal values.
-- Surface schema metadata in UI:
-  - required
-  - computed
-  - conflictsWith
-  - dependsOn
-- Add field-level validation hints before full-model validation.
-
-### Exit criteria
-- Selecting a resource node shows editable schema-derived fields.
-- Invalid field input is blocked or clearly marked before save.
-- Inspector updates are reflected in graph + Terraform preview.
-
----
+- Inspector renders schema-derived editable fields.
+- Type-aware input parsing and field-level error signaling are implemented.
+- `required`, `computed`, `conflictsWith`, and `dependsOn` metadata are surfaced.
 
 ## 4) ✅ Wire live validation and diagnostics UX
-Status: **Completed in current iteration**. Engine diagnostics are now projected into a UI-ready diagnostics view model with severity grouping, node/edge highlights, and click-through focus metadata while compile/export actions are blocked on validation errors.
+Status: **Completed**.
 
-### Scope
-- ✅ Use debounced boundary evaluation for model changes.
-- ✅ Render diagnostics grouped by severity and node/field path.
-- ✅ Highlight graph nodes/edges with errors and warnings.
-- ✅ Support click-through from diagnostics panel to focused node/field.
-
-### Exit criteria
-- ✅ Editing model triggers automatic validation feedback within debounce window.
-- ✅ Users can identify and resolve invalid references/cycles from UI alone.
-- ✅ Compilation/export actions are blocked on validation errors.
-
----
+- Debounced boundary evaluation is used for live model changes.
+- Diagnostics are grouped by severity and include focus metadata.
+- Compile/export actions are blocked while validation errors exist.
 
 ## 5) ✅ Complete Terraform preview and export workflow
-Status: **Completed in current iteration**. Terraform preview now exposes all generated file tabs with per-file copy/download actions, exports a deterministic ZIP package, and provides a visible one-click Sample Architecture reset path in the main action bar.
+Status: **Completed**.
 
-### Scope
-- ✅ Show generated files (`providers.tf`, `main.tf`, `variables.tf`, `outputs.tf`) in preview tabs.
-- ✅ Add copy/download support per file.
-- ✅ Keep/export ZIP flow stable and deterministic for the same model input.
-- ✅ Add a visible one-click “Sample Architecture” starter path.
-
-### Exit criteria
-- ✅ Preview updates immediately after successful validation/compile.
-- ✅ Exported ZIP contents match previewed Terraform exactly.
-- ✅ Repeated export of unchanged model is byte-stable for generated `.tf` files.
-
----
+- Multi-file preview tabs are available with per-file copy/download.
+- ZIP export is deterministic and matches preview output.
+- One-click “Sample Architecture” reset path is available.
 
 ## 6) ✅ Close platform/runtime gaps from design assumptions
-Status: **Completed in current iteration**. Runtime metadata now declares supported Node/npm and browser targets, package exports are split into core/frontend entrypoints, and documentation reflects reproducible clean-clone workflows.
+Status: **Completed**.
 
-### Scope
-- ✅ Add missing runtime packages required for implemented UI/validation flows.
-- ✅ Ensure dependency set matches actual architecture decisions.
-- ✅ Split packages/modules cleanly (`core` vs `frontend`) to keep engine pure.
-- ✅ Document supported Node/npm versions and browser targets.
-
-### Exit criteria
-- ✅ `package.json` reflects all required runtime dependencies.
-- ✅ Build/test/start workflows are reproducible from a clean clone.
-- ✅ Engine remains importable/usable without UI runtime dependencies.
-
----
+- Runtime dependencies and package exports align with architecture.
+- Browser/runtime support is documented in metadata.
+- Clean-clone build/test/start workflows are reproducible.
 
 ## 7) ✅ Harden CI with Terraform verification and UI checks
-Status: **Completed in current iteration**. CI now installs Terraform, executes fixture-level `terraform fmt -check` + `terraform validate`, and runs dedicated frontend UI-contract tests that cover inspector metadata rendering, diagnostics view grouping/highlighting, and adapter/boundary state integration.
+Status: **Completed**.
 
-### Scope
-- ✅ Add Terraform fixture checks in CI:
-  - ✅ `terraform fmt -check`
-  - ✅ `terraform validate`
-- ✅ Add frontend-focused checks:
-  - ✅ UI unit tests for inspector and diagnostics rendering
-  - ✅ adapter + boundary integration tests through UI state
-- ✅ Keep snapshot drift and deterministic compiler checks.
+- CI coverage includes Terraform `fmt` and `validate` fixture checks.
+- UI contract coverage exists for inspector/diagnostics/boundary integration.
+- Determinism checks include snapshots and drift verification.
 
-### Exit criteria
-- ✅ CI gates include lint, type-check, engine tests, UI tests, snapshot checks, Terraform checks.
-- ✅ Any change that breaks Terraform validity or UI-contract behavior fails CI.
+## 8) ✅ Documentation and release-readiness completion
+Status: **Completed in this iteration**.
 
----
-
-## 8) Documentation and release-readiness completion
-Prepare for maintainable adoption and handoff.
-
-### Scope
-- Update README with:
-  - architecture summary (core vs UI)
-  - quickstart for full app
-  - developer workflow
-- Refresh DESIGN and NEXT_STEPS to reflect current implemented state.
-- Add missing repo hygiene docs/files:
-  - `LICENSE` file
+Completed deliverables:
+- README now covers architecture split, full-app quickstart, and developer workflow.
+- DESIGN and NEXT_STEPS now reflect implemented state instead of pending work.
+- Repository hygiene docs are now present:
+  - `LICENSE`
   - `CONTRIBUTING.md`
-  - release checklist
-  - known limitations
+  - `docs/RELEASE_CHECKLIST.md`
+  - `docs/KNOWN_LIMITATIONS.md`
 
-### Exit criteria
-- New contributor can clone, run, test, and export Terraform using docs only.
-- Documentation no longer lists already-completed work as pending.
-- Release candidate checklist is complete and traceable.
-
----
-
-## 9) Suggested execution sequence (to completed v1)
-
-### Phase A — UI foundation (Week 1)
-- Complete app shell + React Flow canvas wiring.
-- Load sample model and support basic node movement/edit flow.
-
-### Phase B — Authoring UX (Week 2)
-- Deliver schema-driven inspector and diagnostics panel.
-- Add node/edge highlight + click-through remediation.
-
-### Phase C — End-to-end workflow (Week 3)
-- Finalize preview tabs and deterministic export path.
-- Add one-click sample architecture demo flow.
-
-### Phase D — Quality gates + release prep (Week 4)
-- Add Terraform checks and frontend CI coverage.
-- Finalize docs, license/contributing files, release checklist.
+Exit criteria status:
+- ✅ New contributor can clone, run, test, and export Terraform using docs only.
+- ✅ Documentation no longer lists completed work as pending.
+- ✅ Release candidate checklist is documented and traceable.
 
 ---
 
-## 10) Immediate issue backlog (ready to create)
-1. Scaffold React/Vite frontend app entrypoint and layout.
-2. Implement React Flow canvas with node/edge CRUD and adapter round-trip.
-3. Build schema-driven resource inspector form renderer.
-4. Add diagnostics panel with node/field click-through focus.
-5. Integrate debounced boundary compute into UI state store.
-6. Implement Terraform multi-file preview tabs and copy/download actions.
-7. Validate export ZIP parity against preview output.
-8. Add Terraform fmt/validate checks to GitHub Actions.
-9. Add frontend test suite for inspector, diagnostics, and state boundary integration.
-10. Update README + release docs; add LICENSE and CONTRIBUTING.
+## 9) Post-v1 roadmap candidates
+
+1. Dynamic schema ingestion from provider metadata.
+2. Richer graph UX (multi-select, keyboard shortcuts, undo/redo timeline).
+3. Additional compiler targets (Pulumi / CloudFormation).
+4. Import/migration helpers from existing Terraform projects.
+5. Policy-as-code linting integration for pre-export governance.
