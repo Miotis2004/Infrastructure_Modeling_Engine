@@ -68,19 +68,19 @@ Convert schema metadata into production node editing UX.
 
 ---
 
-## 4) Wire live validation and diagnostics UX
-Turn engine diagnostics into actionable UI feedback.
+## 4) ✅ Wire live validation and diagnostics UX
+Status: **Completed in current iteration**. Engine diagnostics are now projected into a UI-ready diagnostics view model with severity grouping, node/edge highlights, and click-through focus metadata while compile/export actions are blocked on validation errors.
 
 ### Scope
-- Use debounced boundary evaluation for model changes.
-- Render diagnostics grouped by severity and node/field path.
-- Highlight graph nodes/edges with errors and warnings.
-- Support click-through from diagnostics panel to focused node/field.
+- ✅ Use debounced boundary evaluation for model changes.
+- ✅ Render diagnostics grouped by severity and node/field path.
+- ✅ Highlight graph nodes/edges with errors and warnings.
+- ✅ Support click-through from diagnostics panel to focused node/field.
 
 ### Exit criteria
-- Editing model triggers automatic validation feedback within debounce window.
-- Users can identify and resolve invalid references/cycles from UI alone.
-- Compilation/export actions are blocked on validation errors.
+- ✅ Editing model triggers automatic validation feedback within debounce window.
+- ✅ Users can identify and resolve invalid references/cycles from UI alone.
+- ✅ Compilation/export actions are blocked on validation errors.
 
 ---
 

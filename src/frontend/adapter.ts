@@ -4,12 +4,15 @@ import type { ResourceSchemaRegistry } from "../schemas/types";
 import { awsResourceSchemaRegistry } from "../schemas/aws";
 import { compileModelToTerraform } from "../compiler";
 import { validateModel } from "../validation";
+import { toAttributeReferenceEdgeId } from "./types";
 import {
   createOutputNodeData,
   createResourceNodeData,
   createVariableNodeData,
-  toAttributeReferenceEdgeId,
   type DebouncedEngineBoundary,
+  type DiagnosticFocusTarget,
+  type DiagnosticsGroup,
+  type DiagnosticsViewModel,
   type EngineBoundaryState,
   type ReactFlowAdapterOptions,
   type ReactFlowEdge,
@@ -125,12 +128,117 @@ export function buildResourceInspectorDefinition(
 
 export function evaluateEngineBoundary(model: InfrastructureModel): EngineBoundaryState {
   const validation = validateModel(model);
+  const diagnosticsView = buildDiagnosticsViewModel(model, validation.diagnostics);
+  const canRunActions = validation.diagnostics.every((diagnostic) => diagnostic.severity !== "error");
 
   return {
     model,
     validation,
-    terraformPreview: validation.isValid ? compileModelToTerraform(model) : {}
+    diagnosticsView,
+    terraformPreview: canRunActions ? compileModelToTerraform(model) : {},
+    actions: {
+      canCompile: canRunActions,
+      canExport: canRunActions
+    }
   };
+}
+
+export function buildDiagnosticsViewModel(
+  model: InfrastructureModel,
+  diagnostics: EngineBoundaryState["validation"]["diagnostics"]
+): DiagnosticsViewModel {
+  const bySeverity = {
+    error: groupDiagnosticsBy((diagnostic) => focusKeyForGrouping(resolveDiagnosticFocus(model, diagnostic.path)), diagnostics.filter((diagnostic) => diagnostic.severity === "error")),
+    warning: groupDiagnosticsBy((diagnostic) => focusKeyForGrouping(resolveDiagnosticFocus(model, diagnostic.path)), diagnostics.filter((diagnostic) => diagnostic.severity === "warning"))
+  };
+
+  const highlights: DiagnosticsViewModel["highlights"] = {
+    nodes: {},
+    edges: {}
+  };
+
+  const focusByDiagnosticPath: Record<string, DiagnosticFocusTarget> = {};
+
+  for (const diagnostic of diagnostics) {
+    const focus = resolveDiagnosticFocus(model, diagnostic.path);
+    focusByDiagnosticPath[diagnostic.path] = focus;
+
+    if (focus.nodeId) {
+      highlights.nodes[focus.nodeId] = mergeSeverity(highlights.nodes[focus.nodeId], diagnostic.severity);
+    }
+
+    if (focus.edgeId) {
+      highlights.edges[focus.edgeId] = mergeSeverity(highlights.edges[focus.edgeId], diagnostic.severity);
+    }
+  }
+
+  return {
+    bySeverity,
+    highlights,
+    focusByDiagnosticPath
+  };
+}
+
+export function resolveDiagnosticFocus(model: InfrastructureModel, path: string): DiagnosticFocusTarget {
+  const resourceMatch = /^resources\[(\d+)\](?:\.attributes\.(.+))?$/u.exec(path);
+
+  if (resourceMatch) {
+    const resourceIndex = Number(resourceMatch[1]);
+    const resource = model.resources[resourceIndex];
+    const fieldPath = resourceMatch[2];
+
+    if (!resource) {
+      return {};
+    }
+
+    if (!fieldPath) {
+      return { nodeId: resource.id };
+    }
+
+    const resolvedFieldPath = fieldPath.replace(/\.ref\..+$/u, "");
+    const value = resource.attributes[resolvedFieldPath];
+
+    if (value && value.kind === "reference") {
+      const edge = model.edges.find(
+        (candidate) =>
+          candidate.fromNodeId === value.ref.nodeId &&
+          candidate.fromAttribute === value.ref.attribute &&
+          candidate.toNodeId === resource.id &&
+          candidate.toAttribute === resolvedFieldPath
+      );
+
+      return {
+        nodeId: resource.id,
+        fieldPath: resolvedFieldPath,
+        edgeId: edge ? toAttributeReferenceEdgeId(edge) : undefined
+      };
+    }
+
+    return {
+      nodeId: resource.id,
+      fieldPath: resolvedFieldPath
+    };
+  }
+
+  const outputMatch = /^outputs\[(\d+)\](?:\.(.+))?$/u.exec(path);
+
+  if (outputMatch) {
+    const outputIndex = Number(outputMatch[1]);
+    const output = model.outputs[outputIndex];
+
+    return output ? { nodeId: output.id, fieldPath: outputMatch[2] } : {};
+  }
+
+  const edgeMatch = /^edges\[(\d+)\](?:\..+)?$/u.exec(path);
+
+  if (edgeMatch) {
+    const edgeIndex = Number(edgeMatch[1]);
+    const edge = model.edges[edgeIndex];
+
+    return edge ? { edgeId: toAttributeReferenceEdgeId(edge), nodeId: edge.toNodeId } : {};
+  }
+
+  return {};
 }
 
 export function createDebouncedEngineBoundary(
@@ -190,6 +298,53 @@ function withOptionalPosition<T extends { position?: { x: number; y: number } }>
   }
 
   return { ...node, position };
+}
+
+function groupDiagnosticsBy(
+  keySelector: (diagnostic: EngineBoundaryState["validation"]["diagnostics"][number]) => string,
+  diagnostics: EngineBoundaryState["validation"]["diagnostics"]
+): DiagnosticsGroup[] {
+  const groups = new Map<string, EngineBoundaryState["validation"]["diagnostics"]>();
+
+  for (const diagnostic of diagnostics) {
+    const key = keySelector(diagnostic);
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.push(diagnostic);
+      continue;
+    }
+
+    groups.set(key, [diagnostic]);
+  }
+
+  return [...groups.entries()]
+    .map(([key, groupedDiagnostics]) => ({ key, diagnostics: groupedDiagnostics }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+}
+
+function focusKeyForGrouping(focus: DiagnosticFocusTarget): string {
+  if (focus.nodeId && focus.fieldPath) {
+    return `${focus.nodeId}.${focus.fieldPath}`;
+  }
+
+  if (focus.nodeId) {
+    return focus.nodeId;
+  }
+
+  if (focus.edgeId) {
+    return focus.edgeId;
+  }
+
+  return "global";
+}
+
+function mergeSeverity(current: "error" | "warning" | undefined, next: "error" | "warning"): "error" | "warning" {
+  if (current === "error" || next === "error") {
+    return "error";
+  }
+
+  return "warning";
 }
 function resolveNodePosition(originalPosition: { x: number; y: number } | undefined, currentPosition: { x: number; y: number }) {
   if (!originalPosition && currentPosition.x === DEFAULT_NODE_POSITION.x && currentPosition.y === DEFAULT_NODE_POSITION.y) {
