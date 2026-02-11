@@ -8,8 +8,15 @@
     "build": "tsc",
     "dev": "tsc -w",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test dist/tests/**/*.spec.js",
-    "terraform:fixtures": "npm run build && node dist/tools/renderFixtureTerraform.js .tmp/terraform-fixture"
+    "test": "npm run test:all",
+    "terraform:fixtures": "npm run build && node dist/tools/renderFixtureTerraform.js .tmp/terraform-fixture",
+    "lint": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
+    "test:unit": "npm run build && node --test dist/tests/step1.spec.js dist/tests/step2.validation.spec.js",
+    "test:integration": "npm run build && node --test dist/tests/step4.frontend.spec.js dist/tests/step5.export.spec.js dist/tests/step6.integration.spec.js",
+    "test:snapshots": "npm run build && node --test dist/tests/step3.compiler.spec.js",
+    "test:snapshot-drift": "npm run build && node dist/tools/checkSnapshotDrift.js",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:snapshots && npm run test:snapshot-drift"
   },
   "repository": {
     "type": "git",
